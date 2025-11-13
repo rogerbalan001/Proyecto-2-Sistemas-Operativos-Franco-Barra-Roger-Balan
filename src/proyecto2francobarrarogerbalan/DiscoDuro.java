@@ -10,4 +10,5 @@ package proyecto2francobarrarogerbalan;
  */
 public class DiscoDuro {
     
+    
 }

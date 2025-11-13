@@ -8,6 +8,7 @@ package proyecto2francobarrarogerbalan;
  *
  * @author frank
  */
-public class SSTFManager {
-    
+public class SSTFManager  {
+
+
 }
