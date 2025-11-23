@@ -8,7 +8,7 @@ package proyecto2francobarrarogerbalan;
  *
  * @author frank
  */
-public class ProcessManager {
+public class ProcessManager { // Si quieres guardar estado, añade: implements java.io.Serializable
     
     // Usamos nuestra lista personalizada para la tabla de procesos
     private List<Process> processTable;
@@ -30,8 +30,6 @@ public class ProcessManager {
     
     /**
      * Marca un proceso como TERMINADO.
-     * (Opcional: podrías removerlo de la lista, pero es bueno mantenerlo
-     * para que la GUI lo muestre como "TERMINADO").
      * @param process El proceso que ha finalizado.
      */
     public void terminateProcess(Process process) {
@@ -55,9 +53,17 @@ public class ProcessManager {
     
     /**
      * Devuelve la lista de todos los procesos para ser mostrada en la GUI.
-     * @return La tabla de procesos.
+     * Este es el método original.
      */
     public List<Process> getProcessTable() {
+        return processTable;
+    }
+
+    /**
+     * NUEVO: Este es el método que te faltaba y que arregla el error.
+     * Simplemente devuelve la misma tabla que el método de arriba.
+     */
+    public List<Process> getProcessList() {
         return processTable;
     }
 }
