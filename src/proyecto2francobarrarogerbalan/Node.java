@@ -4,11 +4,9 @@
  */
 package proyecto2francobarrarogerbalan;
 
-import java.io.Serializable; // Vital para Guardar/Cargar
+import java.io.Serializable; 
 
 /**
- * Clase Base para Archivos y Directorios.
- * Implementa Serializable para persistencia.
  * @author frank
  */
 public abstract class Node implements Serializable {
@@ -16,14 +14,12 @@ public abstract class Node implements Serializable {
     private static final long serialVersionUID = 1L;
     
     protected String name;
-    protected NodeDirectory parent; // Referencia al padre (null si es root)
+    protected NodeDirectory parent;
 
     public Node(String name, NodeDirectory parent) {
         this.name = name;
         this.parent = parent;
     }
-    
-    // --- Getters y Setters ---
 
     public String getName() {
         return name;
@@ -40,13 +36,9 @@ public abstract class Node implements Serializable {
     public void setParent(NodeDirectory parent) {
         this.parent = parent;
     }
-    
-    /**
-     * Construye la ruta completa del archivo/carpeta.
-     * Ejemplo: /root/documentos/tarea.pdf
-     */
+
     public String getPath() {
-        if (parent == null) { // Es el directorio raíz
+        if (parent == null) { 
             return "/"; 
         }
         String parentPath = parent.getPath();
@@ -55,19 +47,9 @@ public abstract class Node implements Serializable {
         }
         return parent.getPath() + "/" + name;
     }
-    
-    /**
-     * Método abstracto para obtener el tamaño.
-     * - Archivos: Su tamaño en bloques.
-     * - Directorios: Usualmente 0 o 1.
-     */
+
     public abstract int getSizeInBlocks();
 
-    /**
-     * --- ¡EL CAMBIO MÁGICO! ---
-     * Sobrescribimos toString para que el JTree sepa qué texto mostrar.
-     * Sin esto, el árbol mostraría códigos de memoria raros.
-     */
     @Override
     public String toString() {
         return name; 

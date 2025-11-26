@@ -12,49 +12,30 @@ import java.io.Serializable;
  */
 public class IORequests implements Serializable {
     
-    // Identificador de versión para la serialización (opcional pero recomendado)
     private static final long serialVersionUID = 1L;
     
-    private Process ownerProcess; // El proceso que hizo esta solicitud
-    private TipoSolicitud type;   // CREAR, LEER, ESCRIBIR, ELIMINAR
+    private Process ownerProcess; 
+    private TipoSolicitud type;   
     
-    // --- Información del Archivo ---
-    private String filePath;      // Path completo, ej. "/root/docs/file.txt"
-    private int sizeInBlocks;     // Usado principalmente para CREAR
+    private String filePath;      
+    private int sizeInBlocks;     
     
-    // --- CRÍTICO para la planificación ---
-    private int targetBlock;      // El bloque de disco físico al que se debe acceder
+    private int targetBlock;      
     
-    // --- NUEVO: Puente entre GUI y Simulador ---
-    // Guardamos aquí el objeto NodeFile o NodeDirectory que queremos manipular.
-    // Esto permite que el HiloSimulador tenga acceso al objeto lógico
-    // cuando llegue el momento de procesar la solicitud.
     private Node archivoPendiente; 
 
-    /**
-     * Constructor principal de la solicitud.
-     * @param ownerProcess El proceso que solicita la E/S.
-     * @param type El tipo de operación.
-     * @param filePath La ruta del archivo.
-     * @param sizeInBlocks El tamaño (solo relevante para CREAR).
-     * @param targetBlock El bloque objetivo para el algoritmo de disco.
-     */
     public IORequests(Process ownerProcess, TipoSolicitud type, String filePath, int sizeInBlocks, int targetBlock) {
         this.ownerProcess = ownerProcess;
         this.type = type;
         this.filePath = filePath;
         this.sizeInBlocks = sizeInBlocks;
         this.targetBlock = targetBlock;
-        this.archivoPendiente = null; // Se setea manualmente después si es necesario
+        this.archivoPendiente = null; 
         
-        // SIMULACIÓN: Cuando un proceso hace una solicitud de E/S, 
-        // el SO lo bloquea inmediatamente hasta que el disco termine.
         if (this.ownerProcess != null) {
             this.ownerProcess.setState(EstadoProceso.BLOQUEADO);
         }
     }
-
-    // --- Getters y Setters ---
 
     public Process getOwnerProcess() {
         return ownerProcess;
@@ -100,10 +81,6 @@ public class IORequests implements Serializable {
         return archivoPendiente;
     }
 
-    /**
-     * Guarda la referencia al nodo (Archivo/Carpeta) que se va a procesar.
-     * Fundamental para que el HiloSimulador pueda terminar la operación.
-     */
     public void setArchivoPendiente(Node archivoPendiente) {
         this.archivoPendiente = archivoPendiente;
     }
@@ -112,5 +89,4 @@ public class IORequests implements Serializable {
     public String toString() {
         return type + " -> " + filePath + " [Bloque: " + targetBlock + "]";
     }
-    
 }

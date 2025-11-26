@@ -8,26 +8,16 @@ import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
 /**
- * MOTOR DEL SISTEMA OPERATIVO (KERNEL)
- * Esta clase corre en un Hilo (Thread) independiente al de la interfaz gráfica.
- * Su función es simular el paso del tiempo y procesar las solicitudes de E/S
- * una por una, tal como lo haría un CPU/Disco real.
  * @author frank
  */
 public class HiloSimulador extends Thread {
     
     private FileManager fileManager;
-    private GUI gui; // Referencia para actualizar la vista visualmente
+    private GUI gui; 
     
-    // Banderas de control del hilo
     private boolean corriendo = true;
     private boolean pausado = false;
 
-    /**
-     * Constructor del Kernel simulado.
-     * @param fileManager Acceso a todo el backend (Disco, Procesos, Memoria).
-     * @param gui Acceso al frontend para repintar el árbol y la tabla.
-     */
     public HiloSimulador(FileManager fileManager, GUI gui) {
         this.fileManager = fileManager;
         this.gui = gui;
@@ -39,24 +29,18 @@ public class HiloSimulador extends Thread {
         
         while (corriendo) {
             try {
-                // 1. SIMULACIÓN DE TIEMPO (Slow Motion)
-                // Hacemos que el sistema "duerma" 1 segundo entre revisiones
                 Thread.sleep(1000); 
                 
                 if (pausado) continue;
 
-                // 2. OBTENER EL PLANIFICADOR ACTUAL (Strategy Pattern)
                 DiscoManager planificador = fileManager.getPlanificador();
                 
-                // 3. VERIFICAR SI HAY TRABAJO PENDIENTE
                 if (planificador.hasPendingRequests()) {
                     
-                    // A. Preguntar al algoritmo cuál es la SIGUIENTE solicitud
                     int headPos = fileManager.getCurrentHeadPosition();
                     IORequests solicitud = planificador.getNextRequest(headPos);
                     
                     if (solicitud != null) {
-                        // B. Ejecutar la solicitud encontrada
                         procesarSolicitud(solicitud);
                     }
                 }
@@ -67,42 +51,30 @@ public class HiloSimulador extends Thread {
         }
     }
     
-    /**
-     * Ejecuta la lógica real de la solicitud (Mover cabeza, escribir disco, etc.)
-     * y gestiona los cambios de estado del proceso.
-     */
     private void procesarSolicitud(IORequests req) {
         System.out.println(">>> PROCESANDO: " + req.getType() + " en bloque obj: " + req.getTargetBlock());
 
-        // 1. CAMBIO DE ESTADO: El proceso pasa a EJECUTANDO (CPU/Disco activo)
         proyecto2francobarrarogerbalan.Process proc = req.getOwnerProcess();
         fileManager.getProcessManager().setProcessState(proc, EstadoProceso.EJECUTANDO);
         
-        // Actualizamos la GUI (Tabla y Disco) inmediatamente
         actualizarGUI(); 
         
-        // Simulación visual: Mover la cabeza lectora al bloque destino
         fileManager.setCurrentHeadPosition(req.getTargetBlock());
         
-        // 2. EJECUTAR LA OPERACIÓN REAL EN EL DISCO (Backend)
         boolean exito = true;
         
         try {
-            // Simulamos un pequeño retraso extra por operación de E/S
             Thread.sleep(500); 
 
             switch (req.getType()) {
                 case CREAR:
-                    // Recuperamos el archivo que estaba "en espera" en la solicitud
                     if (req.getArchivoPendiente() instanceof NodeFile) {
                         NodeFile archivo = (NodeFile) req.getArchivoPendiente();
                         
-                        // Intentamos asignar los bloques físicos usando el Gestor
                         exito = fileManager.getGestorAsignacion().allocateFile(archivo);
                         
                         if (!exito) {
                             System.err.println("FALLO: Disco lleno al intentar crear archivo.");
-                            // Si falla, removemos el nodo del árbol (Revertir operación)
                             if (archivo.getParent() != null) {
                                 archivo.getParent().getChildren().remove(archivo);
                             }
@@ -111,19 +83,15 @@ public class HiloSimulador extends Thread {
                     break;
                     
                 case ELIMINAR:
-                    // Liberamos los bloques físicos
                     if (req.getArchivoPendiente() instanceof NodeFile) {
                         NodeFile archivo = (NodeFile) req.getArchivoPendiente();
-                        // 1. Liberar bloques en disco
                         fileManager.getGestorAsignacion().deallocateFile(archivo);
                         
-                        // 2. Remover del árbol lógico
                         if (archivo.getParent() != null) {
                             archivo.getParent().getChildren().remove(archivo);
                         }
                     } 
                     else if (req.getArchivoPendiente() instanceof NodeDirectory) {
-                        // Caso: Eliminar directorio
                         NodeDirectory dir = (NodeDirectory) req.getArchivoPendiente();
                         if (dir.getParent() != null) {
                             dir.getParent().getChildren().remove(dir);
@@ -133,26 +101,19 @@ public class HiloSimulador extends Thread {
                     
                 case LEER:
                 case ESCRIBIR:
-                    // Solo consumen tiempo
                     break;
             }
         } catch (InterruptedException e) {
             exito = false;
         }
 
-        // 3. CAMBIO DE ESTADO: El proceso TERMINA
         fileManager.getProcessManager().terminateProcess(proc);
         
-        // 4. ACTUALIZAR LA GUI FINAL
         boolean finalExito = exito;
         SwingUtilities.invokeLater(() -> {
             
-            // A. Actualizamos Tabla de Procesos y Mapa de Bits
             gui.actualizarVistas(); 
             
-            // B. --- EL ARREGLO ---
-            // Actualizamos el Árbol SOLO AHORA (que ya terminó la operación)
-            // Esto evita que el árbol parpadee o pierda la selección mientras navegas.
             gui.refrescarArbol(); 
             
             if (!finalExito) {
@@ -163,8 +124,6 @@ public class HiloSimulador extends Thread {
             }
         });
     }
-    
-    // --- Métodos de Control ---
     
     private void actualizarGUI() {
         SwingUtilities.invokeLater(() -> gui.actualizarVistas());
