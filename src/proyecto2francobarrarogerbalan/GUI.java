@@ -511,13 +511,14 @@ private final Color COLOR_FONDO = Color.BLACK;
         t.setBackground(COLOR_FONDO);
         t.setForeground(COLOR_TEXTO);
         
-        // Renderizador para obligar texto blanco en los nodos
+        // Renderizador personalizado para Iconos y Colores
         t.setCellRenderer(new javax.swing.tree.DefaultTreeCellRenderer() {
+            
             @Override
             public Component getTreeCellRendererComponent(JTree tree, Object value, boolean sel, boolean exp, boolean leaf, int row, boolean hasFocus) {
                 super.getTreeCellRendererComponent(tree, value, sel, exp, leaf, row, hasFocus);
                 
-                // Fondo
+                // 1. CONFIGURACIÓN DE COLORES (Mismo de antes)
                 if (sel) {
                     setBackgroundNonSelectionColor(COLOR_SELECCION);
                     setBackgroundSelectionColor(COLOR_SELECCION);
@@ -525,10 +526,28 @@ private final Color COLOR_FONDO = Color.BLACK;
                     setBackgroundNonSelectionColor(COLOR_FONDO);
                     setBackgroundSelectionColor(COLOR_FONDO);
                 }
-                
-                // Texto
                 setTextNonSelectionColor(COLOR_TEXTO);
                 setTextSelectionColor(COLOR_TEXTO);
+                
+                // 2. LÓGICA DE ICONOS (NUEVO)
+                // Recuperamos el objeto real que está dentro del nodo visual
+                DefaultMutableTreeNode nodoVisual = (DefaultMutableTreeNode) value;
+                Object userObject = nodoVisual.getUserObject();
+                
+                // Si es un Directorio -> Forzamos icono de Carpeta
+                if (userObject instanceof NodeDirectory) {
+                    if (exp) {
+                        // Icono de carpeta abierta
+                        setIcon(UIManager.getIcon("Tree.openIcon")); 
+                    } else {
+                        // Icono de carpeta cerrada
+                        setIcon(UIManager.getIcon("Tree.closedIcon"));
+                    }
+                } 
+                // Si es un Archivo -> Forzamos icono de Hoja
+                else if (userObject instanceof NodeFile) {
+                    setIcon(UIManager.getIcon("Tree.leafIcon"));
+                }
                 
                 return this;
             }
