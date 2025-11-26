@@ -324,27 +324,32 @@ private NodeDirectory getDirectorioSeleccionado() {
     // ---------------------------------------------------------
     
     // Colores de Alto Contraste
-    private final Color COLOR_FONDO = new Color(18, 18, 18);
-    private final Color COLOR_PANEL = new Color(35, 35, 35);
-    private final Color COLOR_ACCENTO = new Color(52, 152, 219);
+private final Color COLOR_FONDO = Color.BLACK;
+    private final Color COLOR_TEXTO = Color.WHITE;
+    private final Color COLOR_BORDE = Color.WHITE; // Bordes blancos para que se vean los contenedores
+    private final Color COLOR_SELECCION = new Color(0, 100, 200); // Azul para selecciones
 
-private void iniciarComponentesDinamicos() {
-        setTitle("Simulador SO - Proyecto 2");
+    private void iniciarComponentesDinamicos() {
+        setTitle("Simulador SO - Proyecto 2 [DARK MODE]");
         setSize(1280, 720);
         setLayout(new BorderLayout(10, 10));
-        getContentPane().setBackground(COLOR_FONDO); // Fondo negro profundo
+        
+        // 1. FONDO DE LA VENTANA: NEGRO
+        getContentPane().setBackground(COLOR_FONDO);
 
-        // --- 1. Panel Superior (Usuario + Persistencia) ---
+        // --- PANEL SUPERIOR (Usuario + Botones) ---
         JPanel panelTop = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        panelTop.setBackground(COLOR_PANEL);
+        panelTop.setBackground(COLOR_FONDO);
+        panelTop.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, COLOR_BORDE)); // Línea blanca abajo
         
         lblUsuario = new JLabel("Modo: USUARIO");
-        lblUsuario.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblUsuario.setForeground(Color.CYAN); // Aseguramos color
+        lblUsuario.setFont(new Font("Consolas", Font.BOLD, 14)); // Fuente tipo terminal
+        lblUsuario.setForeground(Color.CYAN); // Cyan destaca bien sobre negro
         
-        btnCambiarUsuario = crearBotonModerno("Cambiar Sesión");
-        btnGuardar = crearBotonModerno("Guardar");
-        btnCargar = crearBotonModerno("Cargar");
+        // Botones superiores
+        btnCambiarUsuario = crearBotonNegro("Cambiar Sesión");
+        btnGuardar = crearBotonNegro("Guardar Estado");
+        btnCargar = crearBotonNegro("Cargar Estado");
         
         btnCambiarUsuario.addActionListener(e -> accionCambiarUsuario());
         btnGuardar.addActionListener(e -> accionGuardar());
@@ -353,68 +358,74 @@ private void iniciarComponentesDinamicos() {
         panelTop.add(lblUsuario);
         panelTop.add(Box.createHorizontalStrut(20));
         panelTop.add(btnCambiarUsuario);
-        panelTop.add(Box.createHorizontalStrut(50));
+        panelTop.add(Box.createHorizontalStrut(20));
         panelTop.add(btnGuardar);
+        panelTop.add(Box.createHorizontalStrut(10));
         panelTop.add(btnCargar);
         
         add(panelTop, BorderLayout.NORTH);
 
-        // --- 2. Panel Izquierdo (Árbol) ---
+        // --- PANEL IZQUIERDO (Explorador) ---
         treeModel = new DefaultTreeModel(new DefaultMutableTreeNode("Root"));
         treeDirectorios = new JTree(treeModel);
         estilizarArbol(treeDirectorios);
         
         JScrollPane scrollTree = new JScrollPane(treeDirectorios);
         scrollTree.setPreferredSize(new Dimension(250, 0));
-        scrollTree.setBorder(BorderFactory.createEmptyBorder()); // Adiós borde blanco
-        scrollTree.getViewport().setBackground(COLOR_PANEL);     // Adiós fondo blanco
+        // Truco para quitar bordes blancos del scroll
+        scrollTree.setBorder(BorderFactory.createLineBorder(COLOR_BORDE));
+        scrollTree.getViewport().setBackground(COLOR_FONDO);
         
-        JPanel panelIzq = crearPanelModerno("EXPLORADOR");
+        JPanel panelIzq = crearPanelNegro("EXPLORADOR");
         panelIzq.add(scrollTree, BorderLayout.CENTER);
         add(panelIzq, BorderLayout.WEST);
 
-        // --- 3. Panel Central (Disco) ---
-        panelDisco = new JPanel(new GridLayout(16, 16, 1, 1));
-        panelDisco.setBackground(COLOR_PANEL);
+        // --- PANEL CENTRAL (Mapa de Bits) ---
+        panelDisco = new JPanel(new GridLayout(16, 16, 2, 2)); // Espacio de 2px entre bloques
+        panelDisco.setBackground(COLOR_FONDO); // El fondo de la rejilla es negro
         
         JScrollPane scrollDisco = new JScrollPane(panelDisco);
-        scrollDisco.setBorder(BorderFactory.createEmptyBorder()); // Adiós borde blanco
-        scrollDisco.getViewport().setBackground(COLOR_PANEL);     // Adiós fondo blanco
+        scrollDisco.setBorder(null);
+        scrollDisco.getViewport().setBackground(COLOR_FONDO);
         
-        JPanel panelCentro = crearPanelModerno("MAPA DE BITS");
+        JPanel panelCentro = crearPanelNegro("MAPA DE DISCO");
         panelCentro.add(scrollDisco, BorderLayout.CENTER);
         add(panelCentro, BorderLayout.CENTER);
 
-        // --- 4. Panel Inferior (Procesos + Botones) ---
+        // --- PANEL INFERIOR (Tabla + Acciones) ---
         JPanel panelInf = new JPanel(new BorderLayout(10, 0));
         panelInf.setBackground(COLOR_FONDO);
-        panelInf.setPreferredSize(new Dimension(0, 200));
+        panelInf.setPreferredSize(new Dimension(0, 230));
         
-        // Tabla
+        // Tabla de Procesos
         String[] col = {"PID", "Proceso", "Estado"};
         tableModelProcesos = new DefaultTableModel(col, 0);
         tablaProcesos = new JTable(tableModelProcesos);
-        tablaProcesos.setFillsViewportHeight(true); // Pinta el fondo vacío de la tabla
         estilizarTabla(tablaProcesos);
         
         JScrollPane scrollTabla = new JScrollPane(tablaProcesos);
-        scrollTabla.setBorder(BorderFactory.createEmptyBorder()); // Adiós borde blanco
-        scrollTabla.getViewport().setBackground(COLOR_PANEL);     // Adiós fondo blanco
+        scrollTabla.getViewport().setBackground(COLOR_FONDO);
+        scrollTabla.setBorder(BorderFactory.createLineBorder(COLOR_BORDE));
         
-        JPanel panelTabla = crearPanelModerno("PROCESOS");
+        JPanel panelTabla = crearPanelNegro("COLA DE PROCESOS");
         panelTabla.add(scrollTabla, BorderLayout.CENTER);
         
-        // Botones Acciones
-        JPanel panelBtn = crearPanelModerno("ACCIONES");
-        panelBtn.setPreferredSize(new Dimension(200, 0));
-        JPanel gridBtn = new JPanel(new GridLayout(4, 1, 5, 10));
-        gridBtn.setBackground(COLOR_PANEL);
+        // Botones de Acción (Derecha)
+        JPanel panelBtn = crearPanelNegro("CONTROLES");
+        panelBtn.setPreferredSize(new Dimension(300, 0));
         
-        JButton btnCrear = crearBotonModerno("Crear Archivo");
-        JButton btnCarpeta = crearBotonModerno("Crear Carpeta");
-        JButton btnEliminar = crearBotonModerno("Eliminar");
-        lblEstadoDisco = new JLabel("Libres: ...");
-        lblEstadoDisco.setForeground(Color.WHITE);
+        JPanel gridBtn = new JPanel(new GridLayout(4, 1, 5, 15));
+        gridBtn.setBackground(COLOR_FONDO);
+        gridBtn.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        
+        JButton btnCrear = crearBotonNegro("Crear Archivo");
+        JButton btnCarpeta = crearBotonNegro("Crear Carpeta");
+        JButton btnEliminar = crearBotonNegro("Eliminar");
+        
+        lblEstadoDisco = new JLabel("Cargando...");
+        lblEstadoDisco.setForeground(COLOR_TEXTO);
+        lblEstadoDisco.setHorizontalAlignment(SwingConstants.CENTER);
+        lblEstadoDisco.setFont(new Font("Consolas", Font.BOLD, 14));
         
         btnCrear.addActionListener(e -> accionCrearArchivo());
         btnCarpeta.addActionListener(e -> accionCrearCarpeta());
@@ -424,6 +435,7 @@ private void iniciarComponentesDinamicos() {
         gridBtn.add(btnCrear);
         gridBtn.add(btnCarpeta);
         gridBtn.add(btnEliminar);
+        
         panelBtn.add(gridBtn, BorderLayout.CENTER);
         
         panelInf.add(panelTabla, BorderLayout.CENTER);
@@ -431,37 +443,105 @@ private void iniciarComponentesDinamicos() {
         
         add(panelInf, BorderLayout.SOUTH);
         
+        // Actualizar textos iniciales
         actualizarInfoUsuario();
     }
 
-    private JPanel crearPanelModerno(String titulo) {
+    // --- MÉTODOS DE ESTILO FORZADO (FONDO NEGRO / LETRA BLANCA) ---
+
+    private JPanel crearPanelNegro(String titulo) {
         JPanel p = new JPanel(new BorderLayout());
-        p.setBackground(COLOR_PANEL);
-        p.setBorder(BorderFactory.createTitledBorder(null, titulo, 0, 0, new Font("Segoe UI", Font.BOLD, 12), Color.WHITE));
+        p.setBackground(COLOR_FONDO);
+        // Borde blanco con título blanco
+        p.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(COLOR_BORDE),
+                titulo,
+                0, 0,
+                new Font("Consolas", Font.BOLD, 12),
+                COLOR_TEXTO
+        ));
         return p;
     }
     
-    private JButton crearBotonModerno(String txt) {
+    private JButton crearBotonNegro(String txt) {
         JButton b = new JButton(txt);
-        b.setBackground(COLOR_ACCENTO);
+        
+        // Forzamos colores
+        b.setBackground(Color.BLACK); 
         b.setForeground(Color.WHITE);
+        
+        // Fuente tipo terminal
+        b.setFont(new Font("Consolas", Font.BOLD, 13));
+        
+        // Borde blanco simple
+        b.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.WHITE, 1),
+                BorderFactory.createEmptyBorder(8, 15, 8, 15)
+        ));
+        
+        // Quitar efectos 3D que suelen ponerlo gris/blanco
         b.setFocusPainted(false);
-        b.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        b.setContentAreaFilled(false); // Clave para que se vea negro el fondo del frame
+        b.setOpaque(true); // Necesario en algunos L&F
+        
+        // Efecto Hover simple
+        b.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                b.setBackground(new Color(50, 50, 50)); // Gris oscuro al pasar mouse
+                b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            }
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                b.setBackground(Color.BLACK); // Volver a negro
+            }
+        });
+        
         return b;
     }
     
     private void estilizarArbol(JTree t) {
-        t.setBackground(COLOR_PANEL);
-        t.setForeground(Color.WHITE);
+        t.setBackground(COLOR_FONDO);
+        t.setForeground(COLOR_TEXTO);
+        
+        // Renderizador para obligar texto blanco en los nodos
+        t.setCellRenderer(new javax.swing.tree.DefaultTreeCellRenderer() {
+            @Override
+            public Component getTreeCellRendererComponent(JTree tree, Object value, boolean sel, boolean exp, boolean leaf, int row, boolean hasFocus) {
+                super.getTreeCellRendererComponent(tree, value, sel, exp, leaf, row, hasFocus);
+                
+                // Fondo
+                if (sel) {
+                    setBackgroundNonSelectionColor(COLOR_SELECCION);
+                    setBackgroundSelectionColor(COLOR_SELECCION);
+                } else {
+                    setBackgroundNonSelectionColor(COLOR_FONDO);
+                    setBackgroundSelectionColor(COLOR_FONDO);
+                }
+                
+                // Texto
+                setTextNonSelectionColor(COLOR_TEXTO);
+                setTextSelectionColor(COLOR_TEXTO);
+                
+                return this;
+            }
+        });
     }
     
     private void estilizarTabla(JTable t) {
-        t.setBackground(COLOR_PANEL);
-        t.setForeground(Color.WHITE);
-        t.getTableHeader().setBackground(new Color(50,50,50));
-        t.getTableHeader().setForeground(COLOR_ACCENTO);
+        t.setBackground(COLOR_FONDO);
+        t.setForeground(COLOR_TEXTO);
+        t.setGridColor(Color.GRAY);
+        t.setRowHeight(25);
+        t.setFont(new Font("Consolas", Font.PLAIN, 12));
+        t.setSelectionBackground(COLOR_SELECCION);
+        t.setSelectionForeground(Color.WHITE);
+        
+        // Encabezado Negro con letras Blancas
+        javax.swing.table.JTableHeader header = t.getTableHeader();
+        header.setBackground(new Color(40, 40, 40)); // Ligeramente gris para distinguir
+        header.setForeground(Color.BLACK);
+        header.setFont(new Font("Consolas", Font.BOLD, 13));
+        header.setBorder(BorderFactory.createLineBorder(Color.BLACK));
     }
-
     // --- generated code --             
 }
     // Variables declaration - do not modify//GEN-BEGIN:variables
