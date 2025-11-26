@@ -4,14 +4,17 @@
  */
 package proyecto2francobarrarogerbalan;
 
-import java.io.Serializable; // <--- AGREGAR IMPORT
+/**
+ *
+ * @author frank
+ */
+import java.io.Serializable; 
 
-public class Process implements Serializable { // <--- AGREGAR IMPLEMENTS
+public class Process implements Serializable { 
     
     private static final long serialVersionUID = 1L;
     
-    private static int nextPID = 1; // Contador estático para IDs únicos
-    
+    private static int nextPID = 1; 
     private int pid;
     private String name;
     private EstadoProceso state;
@@ -22,7 +25,6 @@ public class Process implements Serializable { // <--- AGREGAR IMPLEMENTS
         this.state = EstadoProceso.NUEVO;
     }
 
-    // --- Getters y Setters ---
 
     public int getPid() {
         return pid;
@@ -42,7 +44,6 @@ public class Process implements Serializable { // <--- AGREGAR IMPLEMENTS
 
     @Override
     public String toString() {
-        // Útil para mostrar en la GUI
         return "PID: " + pid + " (" + name + ") - " + state;
     }
 }

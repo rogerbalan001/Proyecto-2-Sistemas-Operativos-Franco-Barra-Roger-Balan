@@ -4,21 +4,23 @@
  */
 package proyecto2francobarrarogerbalan;
 
-import java.io.Serializable; // <--- AGREGAR IMPORT
+/**
+ *
+ * @author frank
+ */
+import java.io.Serializable; 
 
-public class NodeList<T> implements Serializable { // <--- AGREGAR IMPLEMENTS
+public class NodeList<T> implements Serializable { 
     
     private static final long serialVersionUID = 1L;
     
-    private T data; // El dato que guarda (ej. un NodeFile, un Process, etc.)
-    private NodeList<T> next; // El puntero al siguiente nodo
+    private T data; 
+    private NodeList<T> next; 
 
     public NodeList(T data) {
         this.data = data;
         this.next = null;
     }
-
-    // --- Getters y Setters ---
     
     public T getData() {
         return data;

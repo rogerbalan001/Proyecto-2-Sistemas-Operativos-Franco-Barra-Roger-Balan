@@ -1,8 +1,12 @@
 package proyecto2francobarrarogerbalan;
 
-import java.io.Serializable;
 
-public class NodeFile extends Node implements Serializable { // <--- Debe decir public class
+/**
+ *
+ * @author frank
+ */
+import java.io.Serializable;
+public class NodeFile extends Node implements Serializable { 
     
     private static final long serialVersionUID = 1L;
     

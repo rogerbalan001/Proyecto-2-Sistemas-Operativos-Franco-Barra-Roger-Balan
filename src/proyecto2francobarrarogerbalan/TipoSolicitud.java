@@ -11,6 +11,6 @@ package proyecto2francobarrarogerbalan;
 public enum TipoSolicitud {
     CREAR,
     LEER,
-    ESCRIBIR, // O "Actualizar"
+    ESCRIBIR, 
     ELIMINAR
 }
