@@ -4,29 +4,20 @@
  */
 package proyecto2francobarrarogerbalan;
 
-import java.io.Serializable; // <--- AGREGAR IMPORT
+import java.io.Serializable; 
 
-public class Block implements Serializable { // <--- AGREGAR IMPLEMENTS
+public class Block implements Serializable {
     
     private static final long serialVersionUID = 1L;
 
-    // -1 podría significar "libre"
-    // 0 podría significar "ocupado, pero es el último bloque del archivo (EOF)"
-    // N > 0 podría significar "ocupado, y el siguiente bloque es N"
     private int nextBlock; 
-    
-    // Podríamos añadir a qué archivo/proceso pertenece para la visualización [cite: 21]
-    // private String ownerFileID; 
     
     private boolean isFree;
 
     public Block() {
         this.isFree = true;
-        this.nextBlock = -1; // -1 significa que no apunta a nada y está libre
-        // this.ownerFileID = null;
+        this.nextBlock = -1;
     }
-
-    // --- Getters y Setters ---
 
     public boolean isFree() {
         return isFree;
@@ -40,20 +31,12 @@ public class Block implements Serializable { // <--- AGREGAR IMPLEMENTS
         return nextBlock;
     }
 
-    /**
-     * Asigna el puntero al siguiente bloque.
-     * @param nextBlock El índice del siguiente bloque. Usar 0 para marcar fin de archivo (EOF).
-     */
     public void setNextBlock(int nextBlock) {
         this.nextBlock = nextBlock;
     }
     
-    /**
-     * Limpia el bloque para liberarlo.
-     */
     public void freeBlock() {
         this.isFree = true;
         this.nextBlock = -1;
-        // this.ownerFileID = null;
     }
 }
