@@ -25,13 +25,12 @@ public class FileManager implements Serializable {
         this.gestorAsignacion = new GestorAsignacion(this.disco);
         this.processManager = new ProcessManager();
         
-        // Por defecto FIFO
         this.planificadorActual = new FIFOManager();
         
         this.root = new NodeDirectory("root", null);
     }
 
-    // --- Getters Necesarios para la GUI ---
+
     
     public NodeDirectory getRoot() {
         return root;
