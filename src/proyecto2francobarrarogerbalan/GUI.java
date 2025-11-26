@@ -170,18 +170,14 @@ private NodeDirectory getDirectorioSeleccionado() {
         }
     }
 
-    private void accionEliminarArchivo() {
-        // ---------------------------------------------------------
-        // SOLUCIÓN PROBLEMA 2: VALIDACIÓN DE ADMIN
-        // ---------------------------------------------------------
+   private void accionEliminarArchivo() {
+        // 1. Validar Permisos
         if (!gestorSesion.isAdmin()) {
             JOptionPane.showMessageDialog(this, "ACCESO DENEGADO: Solo el Administrador puede eliminar.", "Permisos", JOptionPane.WARNING_MESSAGE);
             return;
         }
         
-        // ---------------------------------------------------------
-        // SOLUCIÓN PROBLEMA 1: ELIMINAR EL OBJETO CORRECTO
-        // ---------------------------------------------------------
+        // 2. Obtener selección del árbol
         DefaultMutableTreeNode nodoVisual = (DefaultMutableTreeNode) treeDirectorios.getLastSelectedPathComponent();
         
         if (nodoVisual == null || nodoVisual.isRoot()) {
@@ -189,23 +185,28 @@ private NodeDirectory getDirectorioSeleccionado() {
             return;
         }
         
-        // Obtenemos el objeto REAL directamente del árbol (sin buscar por nombre)
+        // 3. OBTENER EL OBJETO REAL (Sin buscar por nombre)
         Object objetoReal = nodoVisual.getUserObject();
         
+        // Validamos que sea un Nodo nuestro (Archivo o Carpeta)
         if (objetoReal instanceof Node) {
             Node nodoABorrar = (Node) objetoReal;
             
-            int confirm = JOptionPane.showConfirmDialog(this, "¿Eliminar " + nodoABorrar.getName() + "?");
+            int confirm = JOptionPane.showConfirmDialog(this, "¿Seguro que desea eliminar " + nodoABorrar.getName() + "?");
             if (confirm == JOptionPane.YES_OPTION) {
                 
+                // Creamos el proceso y la solicitud DIRECTAMENTE con el objeto que recuperamos
                 proyecto2francobarrarogerbalan.Process proceso = fileManager.getProcessManager().createProcess("Borrar " + nodoABorrar.getName());
                 
                 IORequests request = new IORequests(proceso, TipoSolicitud.ELIMINAR, nodoABorrar.getPath(), 0, 0);
-                request.setArchivoPendiente(nodoABorrar);
+                request.setArchivoPendiente(nodoABorrar); // ¡Aquí está la clave!
                 
                 fileManager.getPlanificador().addRequest(request);
                 JOptionPane.showMessageDialog(this, "Solicitud de eliminación enviada.");
             }
+        } else {
+            // Esto pasa si seleccionas "Root" u otra cosa que no es un archivo
+            JOptionPane.showMessageDialog(this, "No se puede eliminar este elemento.");
         }
     }
 
@@ -230,12 +231,15 @@ private NodeDirectory getDirectorioSeleccionado() {
         }
     }
 
-    private void accionCargar() {
+private void accionCargar() {
         FileManager cargado = GestorPersistencia.cargarEstado("simulador.dat");
         if (cargado != null) {
             this.fileManager = cargado;
-            treeModel.setRoot(crearArbolVisual(fileManager.getRoot()));
-            treeModel.reload();
+            
+            // Llamamos a los dos refrescos manualmente al cargar
+            actualizarVistas(); 
+            refrescarArbol(); // <--- AGREGAR ESTA LÍNEA
+            
             JOptionPane.showMessageDialog(this, "Estado cargado exitosamente.");
         }
     }
@@ -244,20 +248,12 @@ private NodeDirectory getDirectorioSeleccionado() {
     // MÉTODOS DE ACTUALIZACIÓN VISUAL
     // ---------------------------------------------------------
 
-    void actualizarVistas() {
+   public void actualizarVistas() {
         if (fileManager == null) return;
         
-        // Refrescar Árbol
-        DefaultMutableTreeNode rootVisual = crearArbolVisual(fileManager.getRoot());
-        treeModel.setRoot(rootVisual);
-        treeModel.reload();
+        // --- BORRAMOS LA PARTE DEL ÁRBOL DE AQUÍ ---
         
-        // Expandir filas
-        for (int i = 0; i < treeDirectorios.getRowCount(); i++) {
-            treeDirectorios.expandRow(i);
-        }
-        
-        // Refrescar Tabla
+        // Solo actualizamos Tabla de Procesos
         tableModelProcesos.setRowCount(0);
         NodeList<proyecto2francobarrarogerbalan.Process> current = fileManager.getProcessManager().getProcessTable().getHead();
         while (current != null) {
@@ -266,8 +262,22 @@ private NodeDirectory getDirectorioSeleccionado() {
             current = current.getNext();
         }
         
-        // Refrescar Disco
+        // Y el Mapa de Disco
         actualizarMapaDisco();
+    }
+
+    // 2. MÉTODO NUEVO: Solo lo llamaremos cuando realmente cambie un archivo.
+    public void refrescarArbol() {
+        if (fileManager == null) return;
+        
+        DefaultMutableTreeNode rootVisual = crearArbolVisual(fileManager.getRoot());
+        treeModel.setRoot(rootVisual);
+        treeModel.reload();
+        
+        // Expandir filas para ver todo
+        for (int i = 0; i < treeDirectorios.getRowCount(); i++) {
+            treeDirectorios.expandRow(i);
+        }
     }
     
     private void actualizarInfoUsuario() {
@@ -280,9 +290,9 @@ private NodeDirectory getDirectorioSeleccionado() {
         }
     }
 
-    private DefaultMutableTreeNode crearArbolVisual(Node nodoLogico) {
-        // <--- CAMBIO CRÍTICO: Pasamos el OBJETO nodoLogico, no solo el nombre
-        // Esto permite que al seleccionar en el árbol recuperemos el objeto real.
+private DefaultMutableTreeNode crearArbolVisual(Node nodoLogico) {
+        // --- CAMBIO IMPORTANTE: Quitamos .getName() ---
+        // Pasamos el OBJETO COMPLETO para poder recuperarlo después al borrar.
         DefaultMutableTreeNode nodoVisual = new DefaultMutableTreeNode(nodoLogico);
         
         if (nodoLogico instanceof NodeDirectory) {

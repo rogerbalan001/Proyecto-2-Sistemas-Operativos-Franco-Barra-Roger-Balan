@@ -41,7 +41,6 @@ public class HiloSimulador extends Thread {
             try {
                 // 1. SIMULACIÓN DE TIEMPO (Slow Motion)
                 // Hacemos que el sistema "duerma" 1 segundo entre revisiones
-                // para que se vea la animación de los estados.
                 Thread.sleep(1000); 
                 
                 if (pausado) continue;
@@ -79,7 +78,7 @@ public class HiloSimulador extends Thread {
         proyecto2francobarrarogerbalan.Process proc = req.getOwnerProcess();
         fileManager.getProcessManager().setProcessState(proc, EstadoProceso.EJECUTANDO);
         
-        // Actualizamos la GUI inmediatamente para que el usuario vea "EJECUTANDO"
+        // Actualizamos la GUI (Tabla y Disco) inmediatamente
         actualizarGUI(); 
         
         // Simulación visual: Mover la cabeza lectora al bloque destino
@@ -104,7 +103,6 @@ public class HiloSimulador extends Thread {
                         if (!exito) {
                             System.err.println("FALLO: Disco lleno al intentar crear archivo.");
                             // Si falla, removemos el nodo del árbol (Revertir operación)
-                            // (Asumimos que List.java tiene el método remove que agregamos)
                             if (archivo.getParent() != null) {
                                 archivo.getParent().getChildren().remove(archivo);
                             }
@@ -125,7 +123,7 @@ public class HiloSimulador extends Thread {
                         }
                     } 
                     else if (req.getArchivoPendiente() instanceof NodeDirectory) {
-                        // Caso: Eliminar directorio (solo lógico, los directorios no ocupan bloques en este sim)
+                        // Caso: Eliminar directorio
                         NodeDirectory dir = (NodeDirectory) req.getArchivoPendiente();
                         if (dir.getParent() != null) {
                             dir.getParent().getChildren().remove(dir);
@@ -135,7 +133,7 @@ public class HiloSimulador extends Thread {
                     
                 case LEER:
                 case ESCRIBIR:
-                    // Solo consumen tiempo y mueven la cabeza lectora (ya simulado)
+                    // Solo consumen tiempo
                     break;
             }
         } catch (InterruptedException e) {
@@ -148,7 +146,14 @@ public class HiloSimulador extends Thread {
         // 4. ACTUALIZAR LA GUI FINAL
         boolean finalExito = exito;
         SwingUtilities.invokeLater(() -> {
-            gui.actualizarVistas(); // Refrescar árbol y tabla
+            
+            // A. Actualizamos Tabla de Procesos y Mapa de Bits
+            gui.actualizarVistas(); 
+            
+            // B. --- EL ARREGLO ---
+            // Actualizamos el Árbol SOLO AHORA (que ya terminó la operación)
+            // Esto evita que el árbol parpadee o pierda la selección mientras navegas.
+            gui.refrescarArbol(); 
             
             if (!finalExito) {
                 JOptionPane.showMessageDialog(gui, 
