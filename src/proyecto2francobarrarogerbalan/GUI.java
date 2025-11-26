@@ -164,12 +164,11 @@ private NodeDirectory getDirectorioSeleccionado() {
         String nombre = JOptionPane.showInputDialog(this, "Crear carpeta en: " + carpetaDestino.getName() + "\nNombre:");
         
         if (nombre != null && !nombre.trim().isEmpty()) {
-             // Crear carpeta dentro de la seleccionada
+             // 1. Crear la carpeta lógica
              carpetaDestino.addChild(new NodeDirectory(nombre, carpetaDestino));
-             actualizarVistas();
+             refrescarArbol(); 
         }
     }
-
    private void accionEliminarArchivo() {
         // 1. Validar Permisos
         if (!gestorSesion.isAdmin()) {
