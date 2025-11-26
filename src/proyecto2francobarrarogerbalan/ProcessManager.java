@@ -1,16 +1,20 @@
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Interface.java to edit this template
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 package proyecto2francobarrarogerbalan;
 
-import java.io.Serializable; // <--- AGREGAR IMPORT
+import java.io.Serializable;
 
-public class ProcessManager implements Serializable { // <--- AGREGAR IMPLEMENTS
+/**
+ * Administrador de la Tabla de Procesos (PCB).
+ * @author frank
+ */
+public class ProcessManager implements Serializable {
     
     private static final long serialVersionUID = 1L;
     
-    // Usamos nuestra lista personalizada para la tabla de procesos
+    // Usamos nuestra lista personalizada
     private List<Process> processTable;
 
     public ProcessManager() {
@@ -18,9 +22,7 @@ public class ProcessManager implements Serializable { // <--- AGREGAR IMPLEMENTS
     }
     
     /**
-     * Crea un nuevo proceso, lo registra en la tabla y lo retorna.
-     * @param name Un nombre descriptivo para el proceso (ej. "Crear archivo.txt")
-     * @return El Proceso recién creado.
+     * Crea un nuevo proceso y lo registra.
      */
     public Process createProcess(String name) {
         Process newProcess = new Process(name);
@@ -30,22 +32,15 @@ public class ProcessManager implements Serializable { // <--- AGREGAR IMPLEMENTS
     
     /**
      * Marca un proceso como TERMINADO.
-     * (Opcional: podrías removerlo de la lista, pero es bueno mantenerlo
-     * para que la GUI lo muestre como "TERMINADO").
-     * @param process El proceso que ha finalizado.
      */
     public void terminateProcess(Process process) {
         if (process != null) {
             process.setState(EstadoProceso.TERMINADO);
-            // Si List.java tuviera un método remove(), podríamos hacer:
-            // this.processTable.remove(process);
         }
     }
     
     /**
-     * Cambia el estado de un proceso (ej. a EJECUTANDO).
-     * @param process El proceso a modificar.
-     * @param newState El nuevo estado.
+     * Cambia el estado de un proceso.
      */
     public void setProcessState(Process process, EstadoProceso newState) {
         if (process != null) {
@@ -54,15 +49,10 @@ public class ProcessManager implements Serializable { // <--- AGREGAR IMPLEMENTS
     }
     
     /**
-     * Devuelve la lista de todos los procesos para ser mostrada en la GUI.
-     * @return La tabla de procesos.
+     * --- ¡ESTE ES EL MÉTODO QUE TE FALTABA! ---
+     * Devuelve la lista completa de procesos para que la GUI pueda pintarlos.
      */
     public List<Process> getProcessTable() {
         return processTable;
     }
-    // Agrega esto dentro de la clase ProcessManager.java
-
-public List<Process> getProcessList() {
-    return this.processTable;
-}
 }

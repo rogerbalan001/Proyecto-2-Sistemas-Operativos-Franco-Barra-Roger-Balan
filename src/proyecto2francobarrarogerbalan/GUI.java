@@ -8,24 +8,29 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
-import javax.swing.tree.TreePath;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+
 public class GUI extends javax.swing.JFrame {
 
-    /**
-     * Creates new form GUI
-     */// --- VARIABLES GLOBALES QUE AGREGAMOS ---
+    // --- VARIABLES GLOBALES ---
     private FileManager fileManager;
     private Timer simulationTimer;
+    private GestorSesion gestorSesion; // Para manejar Admin/Usuario
     
-    // Componentes visuales personalizados
+    // Componentes visuales
     private JTree treeDirectorios;
     private DefaultTreeModel treeModel;
     private JPanel panelDisco;
     private JTable tablaProcesos;
     private DefaultTableModel tableModelProcesos;
     private JLabel lblEstadoDisco;
+    
+    // NUEVO: Componentes de Sesión
+    private JLabel lblUsuario;
+    private JButton btnCambiarUsuario;
+    private JButton btnGuardar;
+    private JButton btnCargar;
     public GUI() {
 
         initComponents();
@@ -36,18 +41,29 @@ public class GUI extends javax.swing.JFrame {
     public GUI(FileManager fileManager) {
         // 1. Inicializa lo básico de NetBeans
         initComponents();
+       this.fileManager = fileManager;
+        this.gestorSesion = new GestorSesion(); 
         
-        this.fileManager = fileManager;
+        // --- EL ARREGLO MÁGICO ---
+        // Borramos todo lo que NetBeans haya puesto por defecto (paneles vacíos, layouts rotos)
+        // Esto limpia el lienzo para que podamos pintar nuestro diseño.
+        this.getContentPane().removeAll();
         
-        // 2. Sobrescribimos el diseño con el nuestro
+        // 2. Cargamos nuestro diseño oscuro
         iniciarComponentesDinamicos();
         
-        // 3. Timer para actualizar pantalla cada segundo
-        simulationTimer = new Timer(1000, (ActionEvent e) -> {
+        // 3. Forzamos a la ventana a reconocer los cambios
+        this.revalidate();
+        this.repaint();
+        
+        // 4. Iniciamos el Timer de refresco
+        simulationTimer = new Timer(500, (ActionEvent e) -> {
             actualizarVistas();
         });
         simulationTimer.start();
         
+        // 5. Centrar ventana
+        this.setLocationRelativeTo(null);
         actualizarVistas();
     }
     /**
@@ -78,370 +94,376 @@ public class GUI extends javax.swing.JFrame {
     /**
      * @param args the command line arguments
      */
-    public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
-                }
-            }
-        } catch (ClassNotFoundException ex) {
-            java.util.logging.Logger.getLogger(GUI.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (InstantiationException ex) {
-            java.util.logging.Logger.getLogger(GUI.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            java.util.logging.Logger.getLogger(GUI.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
-        } catch (javax.swing.UnsupportedLookAndFeelException ex) {
-            java.util.logging.Logger.getLogger(GUI.class.getName()).log(java.util.logging.Level.SEVERE, null, ex);
+private NodeDirectory getDirectorioSeleccionado() {
+        DefaultMutableTreeNode nodoVisual = (DefaultMutableTreeNode) treeDirectorios.getLastSelectedPathComponent();
+        
+        if (nodoVisual == null) {
+            return fileManager.getRoot(); // Si no hay nada, usa ROOT
         }
-        //</editor-fold>
+        
+        // Recuperamos el objeto real (Node) que guardamos dentro del nodo visual
+        Object objetoReal = nodoVisual.getUserObject();
+        
+        if (objetoReal instanceof NodeDirectory) {
+            return (NodeDirectory) objetoReal;
+        } else if (objetoReal instanceof NodeFile) {
+            // Si seleccionas un archivo, devolvemos su carpeta padre
+            return ((NodeFile) objetoReal).getParent();
+        }
+        
+        return fileManager.getRoot();
+    }
 
-        /* Create and display the form */
-        java.awt.EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                new GUI().setVisible(true);
+    // ---------------------------------------------------------
+    // LÓGICA DE ACCIONES (BOTONES)
+    // ---------------------------------------------------------
+
+    private void accionCrearArchivo() {
+        // 1. Detectar dónde guardar (Subcarpeta o Root)
+        NodeDirectory carpetaDestino = getDirectorioSeleccionado();
+        
+        JTextField nombreField = new JTextField();
+        JTextField tamField = new JTextField();
+        Object[] message = {
+            "Carpeta: " + carpetaDestino.getName(), // Mostramos dónde se va a guardar
+            "Nombre del Archivo:", nombreField,
+            "Tamaño (Bloques):", tamField
+        };
+
+        int option = JOptionPane.showConfirmDialog(this, message, "Crear Archivo", JOptionPane.OK_CANCEL_OPTION);
+
+        if (option == JOptionPane.OK_OPTION) {
+            try {
+                String nombre = nombreField.getText();
+                int tam = Integer.parseInt(tamField.getText());
+                
+                if (tam <= 0) throw new NumberFormatException();
+
+                // 2. Crear Objeto Lógico EN LA CARPETA SELECCIONADA
+                NodeFile nuevo = new NodeFile(nombre, carpetaDestino, tam);
+                carpetaDestino.addChild(nuevo); // <--- CAMBIO IMPORTANTE: Se agrega a la carpeta destino
+                
+                // 3. Crear Proceso y Solicitud
+                proyecto2francobarrarogerbalan.Process proceso = fileManager.getProcessManager().createProcess("Crear " + nombre);
+                
+                IORequests request = new IORequests(proceso, TipoSolicitud.CREAR, nuevo.getPath(), tam, 0);
+                request.setArchivoPendiente(nuevo);
+                
+                fileManager.getPlanificador().addRequest(request);
+                JOptionPane.showMessageDialog(this, "Solicitud enviada.");
+                actualizarVistas();
+
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error: Datos inválidos.", "Error", JOptionPane.ERROR_MESSAGE);
             }
-        });
+        }
+    }
+    
+    private void accionCrearCarpeta() {
+        NodeDirectory carpetaDestino = getDirectorioSeleccionado();
+        String nombre = JOptionPane.showInputDialog(this, "Crear carpeta en: " + carpetaDestino.getName() + "\nNombre:");
+        
+        if (nombre != null && !nombre.trim().isEmpty()) {
+             // Crear carpeta dentro de la seleccionada
+             carpetaDestino.addChild(new NodeDirectory(nombre, carpetaDestino));
+             actualizarVistas();
+        }
     }
 
-    // Colores de Alto Contraste
-    private final Color COLOR_FONDO = new Color(18, 18, 18);        // Negro casi puro
-    private final Color COLOR_PANEL = new Color(35, 35, 35);        // Gris oscuro
-    private final Color COLOR_TEXTO = new Color(255, 255, 255);     // BLANCO PURO
-    private final Color COLOR_ACCENTO = new Color(52, 152, 219);    // Azul Brillante
-    private final Color COLOR_VERDE = new Color(46, 204, 113);      
-    private final Color COLOR_ROJO = new Color(231, 76, 60);        
-
-    private void iniciarComponentesDinamicos() {
-        setTitle("Simulador SO - Proyecto 2 [Dark High Contrast]");
-        setSize(1280, 720);
-        setLocationRelativeTo(null);
+    private void accionEliminarArchivo() {
+        // ---------------------------------------------------------
+        // SOLUCIÓN PROBLEMA 2: VALIDACIÓN DE ADMIN
+        // ---------------------------------------------------------
+        if (!gestorSesion.isAdmin()) {
+            JOptionPane.showMessageDialog(this, "ACCESO DENEGADO: Solo el Administrador puede eliminar.", "Permisos", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
         
-        // Fondo General
-        getContentPane().setBackground(COLOR_FONDO);
-        setLayout(new BorderLayout(15, 15)); // Más espacio entre paneles
-
-        // --- 1. ÁRBOL (Izquierda) ---
-        treeModel = new DefaultTreeModel(new DefaultMutableTreeNode("Root"));
-        treeDirectorios = new JTree(treeModel);
-        estilizarArbol(treeDirectorios); 
+        // ---------------------------------------------------------
+        // SOLUCIÓN PROBLEMA 1: ELIMINAR EL OBJETO CORRECTO
+        // ---------------------------------------------------------
+        DefaultMutableTreeNode nodoVisual = (DefaultMutableTreeNode) treeDirectorios.getLastSelectedPathComponent();
         
-        JScrollPane scrollTree = new JScrollPane(treeDirectorios);
-        scrollTree.setBorder(BorderFactory.createEmptyBorder());
-        scrollTree.getViewport().setBackground(COLOR_PANEL);
-
-        JPanel panelIzq = crearPanelModerno("EXPLORADOR DE ARCHIVOS");
-        panelIzq.add(scrollTree, BorderLayout.CENTER);
-
-        // --- 2. DISCO (Centro) ---
-        panelDisco = new JPanel();
-        panelDisco.setLayout(new GridLayout(16, 16, 3, 3)); 
-        panelDisco.setBackground(COLOR_PANEL);
+        if (nodoVisual == null || nodoVisual.isRoot()) {
+            JOptionPane.showMessageDialog(this, "Seleccione un archivo para eliminar.");
+            return;
+        }
         
-        JScrollPane scrollDisco = new JScrollPane(panelDisco);
-        scrollDisco.setBorder(BorderFactory.createEmptyBorder());
-        scrollDisco.getViewport().setBackground(COLOR_PANEL);
+        // Obtenemos el objeto REAL directamente del árbol (sin buscar por nombre)
+        Object objetoReal = nodoVisual.getUserObject();
         
-        JPanel panelCentro = crearPanelModerno("MAPA DE BITS (DISCO)");
-        panelCentro.add(scrollDisco, BorderLayout.CENTER);
-
-        // --- 3. PANEL INFERIOR ---
-        JPanel panelInferior = new JPanel(new BorderLayout(15, 0));
-        panelInferior.setBackground(COLOR_FONDO);
-        panelInferior.setPreferredSize(new Dimension(0, 280));
-        panelInferior.setBorder(BorderFactory.createEmptyBorder(0, 10, 10, 10));
-
-        // Tabla
-        String[] columnNames = {"PID", "Nombre del Proceso", "Estado"};
-        tableModelProcesos = new DefaultTableModel(columnNames, 0);
-        tablaProcesos = new JTable(tableModelProcesos);
-        estilizarTabla(tablaProcesos); 
-        
-        JScrollPane scrollTabla = new JScrollPane(tablaProcesos);
-        scrollTabla.setBorder(BorderFactory.createLineBorder(COLOR_PANEL));
-        scrollTabla.getViewport().setBackground(COLOR_PANEL); // Fondo del scroll oscuro
-        
-        JPanel panelTablaContainer = crearPanelModerno("COLA DE PROCESOS");
-        panelTablaContainer.add(scrollTabla, BorderLayout.CENTER);
-
-        // Botones
-        JPanel panelControles = crearPanelModerno("PANEL DE CONTROL");
-        panelControles.setPreferredSize(new Dimension(250, 0));
-        
-        JPanel gridBotones = new JPanel(new GridLayout(5, 1, 0, 15)); 
-        gridBotones.setBackground(COLOR_PANEL);
-        gridBotones.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
-        
-        JButton btnCrearArchivo = crearBotonModerno("Crear Archivo");
-        JButton btnCrearCarpeta = crearBotonModerno("Crear Carpeta");
-        JButton btnEliminar = crearBotonModerno("Eliminar Selección");
-        
-        lblEstadoDisco = new JLabel("Cargando...", SwingConstants.CENTER);
-        lblEstadoDisco.setForeground(Color.WHITE); // Texto blanco forzado
-        lblEstadoDisco.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        
-        gridBotones.add(lblEstadoDisco);
-        gridBotones.add(btnCrearArchivo);
-        gridBotones.add(btnCrearCarpeta);
-        gridBotones.add(btnEliminar);
-        
-        panelControles.add(gridBotones, BorderLayout.CENTER);
-
-        // Eventos
-        btnCrearArchivo.addActionListener(e -> accionCrearArchivo());
-        btnCrearCarpeta.addActionListener(e -> accionCrearCarpeta());
-        btnEliminar.addActionListener(e -> accionEliminarArchivo());
-        
-        panelInferior.add(panelTablaContainer, BorderLayout.CENTER);
-        panelInferior.add(panelControles, BorderLayout.EAST);
-
-        add(panelIzq, BorderLayout.WEST);
-        add(panelCentro, BorderLayout.CENTER);
-        add(panelInferior, BorderLayout.SOUTH);
-        
-        revalidate();
-        repaint();
-    }
-
-    // --- HELPERS DE ESTILO CORREGIDOS ---
-
-    private JPanel crearPanelModerno(String titulo) {
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(COLOR_PANEL);
-        
-        // AQUÍ ESTABA EL ERROR: Ahora forzamos el color del título a BLANCO
-        javax.swing.border.TitledBorder bordeTitulo = BorderFactory.createTitledBorder(
-                BorderFactory.createLineBorder(COLOR_ACCENTO, 1), // Borde azul fino
-                titulo,
-                javax.swing.border.TitledBorder.DEFAULT_JUSTIFICATION,
-                javax.swing.border.TitledBorder.DEFAULT_POSITION,
-                new Font("Segoe UI", Font.BOLD, 12),
-                Color.WHITE // <--- ESTO HACE QUE LAS LETRAS SE VEAN BLANCAS
-        );
-        
-        panel.setBorder(BorderFactory.createCompoundBorder(
-            bordeTitulo,
-            BorderFactory.createEmptyBorder(10, 10, 10, 10)
-        ));
-        return panel;
-    }
-
-    private JButton crearBotonModerno(String texto) {
-        JButton btn = new JButton(texto);
-        btn.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        btn.setForeground(Color.WHITE);
-        btn.setBackground(COLOR_ACCENTO);
-        btn.setFocusPainted(false);
-        btn.setBorderPainted(false);
-        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        return btn;
-    }
-
-    private void estilizarArbol(JTree tree) {
-        tree.setBackground(COLOR_PANEL);
-        tree.setForeground(Color.WHITE); // Texto blanco
-        tree.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        
-        // Renderizador simple para forzar texto blanco
-        tree.setCellRenderer(new javax.swing.tree.DefaultTreeCellRenderer() {
-            @Override
-            public Component getTreeCellRendererComponent(JTree tree, Object value, boolean sel, boolean exp, boolean leaf, int row, boolean hasFocus) {
-                super.getTreeCellRendererComponent(tree, value, sel, exp, leaf, row, hasFocus);
+        if (objetoReal instanceof Node) {
+            Node nodoABorrar = (Node) objetoReal;
+            
+            int confirm = JOptionPane.showConfirmDialog(this, "¿Eliminar " + nodoABorrar.getName() + "?");
+            if (confirm == JOptionPane.YES_OPTION) {
                 
-                // Colores normales
-                setBackgroundNonSelectionColor(COLOR_PANEL);
-                setTextNonSelectionColor(Color.WHITE);
+                proyecto2francobarrarogerbalan.Process proceso = fileManager.getProcessManager().createProcess("Borrar " + nodoABorrar.getName());
                 
-                // Colores al seleccionar
-                setBackgroundSelectionColor(COLOR_ACCENTO);
-                setTextSelectionColor(Color.WHITE);
+                IORequests request = new IORequests(proceso, TipoSolicitud.ELIMINAR, nodoABorrar.getPath(), 0, 0);
+                request.setArchivoPendiente(nodoABorrar);
                 
-                return this;
+                fileManager.getPlanificador().addRequest(request);
+                JOptionPane.showMessageDialog(this, "Solicitud de eliminación enviada.");
             }
-        });
+        }
     }
 
-    private void estilizarTabla(JTable table) {
-        // Cuerpo de la tabla
-        table.setBackground(COLOR_PANEL);
-        table.setForeground(Color.WHITE); // Texto blanco
-        table.setGridColor(new Color(80, 80, 80));
-        table.setRowHeight(28);
-        table.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        table.setSelectionBackground(COLOR_ACCENTO);
-        table.setSelectionForeground(Color.WHITE);
-        
-        // Encabezado (Header) - Aquí es donde suele fallar en Dark Mode
-        javax.swing.table.JTableHeader header = table.getTableHeader();
-        header.setBackground(new Color(25, 25, 25)); // Fondo cabecera más oscuro
-        header.setForeground(COLOR_ACCENTO); // Texto cabecera Azul
-        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        header.setOpaque(true);
+    private void accionCambiarUsuario() {
+        if (gestorSesion.isAdmin()) {
+            gestorSesion.setModoActual(ModoUsuario.USUARIO);
+        } else {
+            String pass = JOptionPane.showInputDialog("Contraseña de Admin (admin):");
+            if ("admin".equals(pass)) {
+                gestorSesion.setModoActual(ModoUsuario.ADMINISTRADOR);
+            } else if (pass != null) {
+                JOptionPane.showMessageDialog(this, "Contraseña incorrecta.");
+            }
+        }
+        actualizarInfoUsuario();
     }
+    
+    private void accionGuardar() {
+        // Asegúrate de que el nombre del archivo sea el que prefieras
+        if (GestorPersistencia.guardarEstado(fileManager, "simulador.dat")) {
+            JOptionPane.showMessageDialog(this, "Estado guardado correctamente.");
+        }
+    }
+
+    private void accionCargar() {
+        FileManager cargado = GestorPersistencia.cargarEstado("simulador.dat");
+        if (cargado != null) {
+            this.fileManager = cargado;
+            treeModel.setRoot(crearArbolVisual(fileManager.getRoot()));
+            treeModel.reload();
+            JOptionPane.showMessageDialog(this, "Estado cargado exitosamente.");
+        }
+    }
+
+    // ---------------------------------------------------------
+    // MÉTODOS DE ACTUALIZACIÓN VISUAL
+    // ---------------------------------------------------------
+
     void actualizarVistas() {
         if (fileManager == null) return;
-        actualizarArbol();
-        actualizarMapaDisco();
-        actualizarTablaProcesos();
-    }
-
-    private void actualizarArbol() {
-        NodeDirectory rootNode = fileManager.getRoot();
-        if (rootNode == null) return;
-        DefaultMutableTreeNode visualRoot = new DefaultMutableTreeNode(rootNode.getName());
-        construirArbolRecursivo(rootNode, visualRoot);
-        treeModel.setRoot(visualRoot);
+        
+        // Refrescar Árbol
+        DefaultMutableTreeNode rootVisual = crearArbolVisual(fileManager.getRoot());
+        treeModel.setRoot(rootVisual);
         treeModel.reload();
+        
+        // Expandir filas
         for (int i = 0; i < treeDirectorios.getRowCount(); i++) {
             treeDirectorios.expandRow(i);
         }
+        
+        // Refrescar Tabla
+        tableModelProcesos.setRowCount(0);
+        NodeList<proyecto2francobarrarogerbalan.Process> current = fileManager.getProcessManager().getProcessTable().getHead();
+        while (current != null) {
+            proyecto2francobarrarogerbalan.Process p = current.getData();
+            tableModelProcesos.addRow(new Object[]{p.getPid(), p.getName(), p.getState()});
+            current = current.getNext();
+        }
+        
+        // Refrescar Disco
+        actualizarMapaDisco();
     }
-
-    private void construirArbolRecursivo(NodeDirectory dir, DefaultMutableTreeNode visualNode) {
-        proyecto2francobarrarogerbalan.List<Node> children = dir.getChildren();
-        if (children != null) {
-            NodeList<Node> current = children.getHead();
-            while (current != null) {
-                Node childData = current.getData();
-                DefaultMutableTreeNode visualChild = new DefaultMutableTreeNode(childData.getName());
-                if (childData instanceof NodeDirectory) {
-                    construirArbolRecursivo((NodeDirectory) childData, visualChild);
-                }
-                visualNode.add(visualChild);
-                current = current.getNext();
-            }
+    
+    private void actualizarInfoUsuario() {
+        if (gestorSesion.isAdmin()) {
+            lblUsuario.setText("Modo: ADMINISTRADOR");
+            lblUsuario.setForeground(Color.RED);
+        } else {
+            lblUsuario.setText("Modo: USUARIO");
+            lblUsuario.setForeground(Color.CYAN); // O el color que prefieras
         }
     }
 
+    private DefaultMutableTreeNode crearArbolVisual(Node nodoLogico) {
+        // <--- CAMBIO CRÍTICO: Pasamos el OBJETO nodoLogico, no solo el nombre
+        // Esto permite que al seleccionar en el árbol recuperemos el objeto real.
+        DefaultMutableTreeNode nodoVisual = new DefaultMutableTreeNode(nodoLogico);
+        
+        if (nodoLogico instanceof NodeDirectory) {
+            NodeDirectory dir = (NodeDirectory) nodoLogico;
+            NodeList<Node> current = dir.getChildren().getHead();
+            while (current != null) {
+                nodoVisual.add(crearArbolVisual(current.getData()));
+                current = current.getNext();
+            }
+        }
+        return nodoVisual;
+    }
+    
     private void actualizarMapaDisco() {
         panelDisco.removeAll();
         Block[] bloques = fileManager.getDisco().getBlocks();
         int libres = 0;
         
         for (int i = 0; i < bloques.length; i++) {
-            JPanel bloqueView = new JPanel();
-            // Usamos colores planos (Flat)
+            JPanel p = new JPanel();
+            // Borde gris oscuro para que se vea la rejilla
+            p.setBorder(BorderFactory.createLineBorder(new Color(60, 60, 60))); 
+            
             if (bloques[i].isFree()) {
-                bloqueView.setBackground(COLOR_VERDE); // Verde moderno
+                p.setBackground(new Color(46, 204, 113)); // Verde
                 libres++;
             } else {
-                bloqueView.setBackground(COLOR_ROJO); // Rojo moderno
-                JLabel num = new JLabel(String.valueOf(i));
-                num.setForeground(Color.WHITE);
-                num.setFont(new Font("SansSerif", Font.BOLD, 10));
-                bloqueView.add(num);
+                p.setBackground(new Color(231, 76, 60)); // Rojo
             }
-            panelDisco.add(bloqueView);
+            panelDisco.add(p);
         }
-        
-        lblEstadoDisco.setText("<html>Libres: <font color='#2ecc71'>" + libres + "</font> / " + bloques.length + "</html>");
+        lblEstadoDisco.setText("Bloques Libres: " + libres + " / " + bloques.length);
         panelDisco.revalidate();
         panelDisco.repaint();
     }
 
-    private void actualizarTablaProcesos() {
-        tableModelProcesos.setRowCount(0);
-        proyecto2francobarrarogerbalan.List<proyecto2francobarrarogerbalan.Process> lista = fileManager.getTablaProcesos();
-        if (lista != null) {
-            NodeList<proyecto2francobarrarogerbalan.Process> current = lista.getHead();
-            while (current != null) {
-                proyecto2francobarrarogerbalan.Process p = current.getData();
-                tableModelProcesos.addRow(new Object[]{p.getPid(), p.getName(), p.getState()});
-                current = current.getNext();
-            }
-        }
+    // ---------------------------------------------------------
+    // CONFIGURACIÓN VISUAL INICIAL (COLORES Y PANELES)
+    // ---------------------------------------------------------
+    
+    // Colores de Alto Contraste
+    private final Color COLOR_FONDO = new Color(18, 18, 18);
+    private final Color COLOR_PANEL = new Color(35, 35, 35);
+    private final Color COLOR_ACCENTO = new Color(52, 152, 219);
+
+private void iniciarComponentesDinamicos() {
+        setTitle("Simulador SO - Proyecto 2");
+        setSize(1280, 720);
+        setLayout(new BorderLayout(10, 10));
+        getContentPane().setBackground(COLOR_FONDO); // Fondo negro profundo
+
+        // --- 1. Panel Superior (Usuario + Persistencia) ---
+        JPanel panelTop = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        panelTop.setBackground(COLOR_PANEL);
+        
+        lblUsuario = new JLabel("Modo: USUARIO");
+        lblUsuario.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblUsuario.setForeground(Color.CYAN); // Aseguramos color
+        
+        btnCambiarUsuario = crearBotonModerno("Cambiar Sesión");
+        btnGuardar = crearBotonModerno("Guardar");
+        btnCargar = crearBotonModerno("Cargar");
+        
+        btnCambiarUsuario.addActionListener(e -> accionCambiarUsuario());
+        btnGuardar.addActionListener(e -> accionGuardar());
+        btnCargar.addActionListener(e -> accionCargar());
+        
+        panelTop.add(lblUsuario);
+        panelTop.add(Box.createHorizontalStrut(20));
+        panelTop.add(btnCambiarUsuario);
+        panelTop.add(Box.createHorizontalStrut(50));
+        panelTop.add(btnGuardar);
+        panelTop.add(btnCargar);
+        
+        add(panelTop, BorderLayout.NORTH);
+
+        // --- 2. Panel Izquierdo (Árbol) ---
+        treeModel = new DefaultTreeModel(new DefaultMutableTreeNode("Root"));
+        treeDirectorios = new JTree(treeModel);
+        estilizarArbol(treeDirectorios);
+        
+        JScrollPane scrollTree = new JScrollPane(treeDirectorios);
+        scrollTree.setPreferredSize(new Dimension(250, 0));
+        scrollTree.setBorder(BorderFactory.createEmptyBorder()); // Adiós borde blanco
+        scrollTree.getViewport().setBackground(COLOR_PANEL);     // Adiós fondo blanco
+        
+        JPanel panelIzq = crearPanelModerno("EXPLORADOR");
+        panelIzq.add(scrollTree, BorderLayout.CENTER);
+        add(panelIzq, BorderLayout.WEST);
+
+        // --- 3. Panel Central (Disco) ---
+        panelDisco = new JPanel(new GridLayout(16, 16, 1, 1));
+        panelDisco.setBackground(COLOR_PANEL);
+        
+        JScrollPane scrollDisco = new JScrollPane(panelDisco);
+        scrollDisco.setBorder(BorderFactory.createEmptyBorder()); // Adiós borde blanco
+        scrollDisco.getViewport().setBackground(COLOR_PANEL);     // Adiós fondo blanco
+        
+        JPanel panelCentro = crearPanelModerno("MAPA DE BITS");
+        panelCentro.add(scrollDisco, BorderLayout.CENTER);
+        add(panelCentro, BorderLayout.CENTER);
+
+        // --- 4. Panel Inferior (Procesos + Botones) ---
+        JPanel panelInf = new JPanel(new BorderLayout(10, 0));
+        panelInf.setBackground(COLOR_FONDO);
+        panelInf.setPreferredSize(new Dimension(0, 200));
+        
+        // Tabla
+        String[] col = {"PID", "Proceso", "Estado"};
+        tableModelProcesos = new DefaultTableModel(col, 0);
+        tablaProcesos = new JTable(tableModelProcesos);
+        tablaProcesos.setFillsViewportHeight(true); // Pinta el fondo vacío de la tabla
+        estilizarTabla(tablaProcesos);
+        
+        JScrollPane scrollTabla = new JScrollPane(tablaProcesos);
+        scrollTabla.setBorder(BorderFactory.createEmptyBorder()); // Adiós borde blanco
+        scrollTabla.getViewport().setBackground(COLOR_PANEL);     // Adiós fondo blanco
+        
+        JPanel panelTabla = crearPanelModerno("PROCESOS");
+        panelTabla.add(scrollTabla, BorderLayout.CENTER);
+        
+        // Botones Acciones
+        JPanel panelBtn = crearPanelModerno("ACCIONES");
+        panelBtn.setPreferredSize(new Dimension(200, 0));
+        JPanel gridBtn = new JPanel(new GridLayout(4, 1, 5, 10));
+        gridBtn.setBackground(COLOR_PANEL);
+        
+        JButton btnCrear = crearBotonModerno("Crear Archivo");
+        JButton btnCarpeta = crearBotonModerno("Crear Carpeta");
+        JButton btnEliminar = crearBotonModerno("Eliminar");
+        lblEstadoDisco = new JLabel("Libres: ...");
+        lblEstadoDisco.setForeground(Color.WHITE);
+        
+        btnCrear.addActionListener(e -> accionCrearArchivo());
+        btnCarpeta.addActionListener(e -> accionCrearCarpeta());
+        btnEliminar.addActionListener(e -> accionEliminarArchivo());
+        
+        gridBtn.add(lblEstadoDisco);
+        gridBtn.add(btnCrear);
+        gridBtn.add(btnCarpeta);
+        gridBtn.add(btnEliminar);
+        panelBtn.add(gridBtn, BorderLayout.CENTER);
+        
+        panelInf.add(panelTabla, BorderLayout.CENTER);
+        panelInf.add(panelBtn, BorderLayout.EAST);
+        
+        add(panelInf, BorderLayout.SOUTH);
+        
+        actualizarInfoUsuario();
     }
 
-    // --- ACCIONES DE BOTONES (MISMA LÓGICA) ---
+    private JPanel crearPanelModerno(String titulo) {
+        JPanel p = new JPanel(new BorderLayout());
+        p.setBackground(COLOR_PANEL);
+        p.setBorder(BorderFactory.createTitledBorder(null, titulo, 0, 0, new Font("Segoe UI", Font.BOLD, 12), Color.WHITE));
+        return p;
+    }
+    
+    private JButton crearBotonModerno(String txt) {
+        JButton b = new JButton(txt);
+        b.setBackground(COLOR_ACCENTO);
+        b.setForeground(Color.WHITE);
+        b.setFocusPainted(false);
+        b.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        return b;
+    }
+    
+    private void estilizarArbol(JTree t) {
+        t.setBackground(COLOR_PANEL);
+        t.setForeground(Color.WHITE);
+    }
+    
+    private void estilizarTabla(JTable t) {
+        t.setBackground(COLOR_PANEL);
+        t.setForeground(Color.WHITE);
+        t.getTableHeader().setBackground(new Color(50,50,50));
+        t.getTableHeader().setForeground(COLOR_ACCENTO);
+    }
 
-   private void accionCrearArchivo() {
-        try {
-            // Usamos campos de texto simples para el input
-            JTextField nombreField = new JTextField();
-            JTextField tamField = new JTextField();
-            Object[] message = {
-                "Nombre del Archivo:", nombreField,
-                "Tamaño (Bloques):", tamField
-            };
-
-            int option = JOptionPane.showConfirmDialog(this, message, "Crear Archivo", JOptionPane.OK_CANCEL_OPTION);
-            
-            if (option == JOptionPane.OK_OPTION) {
-                String nombre = nombreField.getText();
-                int tam = Integer.parseInt(tamField.getText());
-                
-                if (tam <= 0) throw new NumberFormatException(); // Validar positivos
-                
-                // 1. Crear el OBJETO LÓGICO (Aparece en el árbol, pero sin bloques físicos aún)
-                NodeDirectory root = fileManager.getRoot();
-                NodeFile nuevo = new NodeFile(nombre, root, tam);
-                
-                // 2. Lo agregamos visualmente al árbol YA, para que el usuario vea que se "encoló"
-                root.addChild(nuevo);
-                
-                // 3. Crear el PROCESO
-                // (Si te marca error en 'Process', asegúrate de importar tu clase Process, no la de java.lang)
-                proyecto2francobarrarogerbalan.Process proceso = fileManager.getProcessManager().createProcess("Crear " + nombre);
-                
-                // 4. Crear la SOLICITUD (IORequest)
-                // targetBlock es 0 porque el algoritmo decidirá dónde ponerlo
-                IORequests request = new IORequests(proceso, TipoSolicitud.CREAR, nuevo.getPath(), tam, 0);
-                request.setArchivoPendiente(nuevo); // ¡IMPORTANTE! Pasamos el objeto
-                
-                // 5. ENVIAR AL KERNEL (PLANIFICADOR)
-                fileManager.getPlanificador().addRequest(request);
-                
-                JOptionPane.showMessageDialog(this, "Solicitud enviada a la cola. Espere procesamiento...");
-                actualizarVistas();
-            }
-        } catch (Exception ex) { 
-            JOptionPane.showMessageDialog(this, "Datos inválidos (Use números enteros positivos).", "Error", JOptionPane.ERROR_MESSAGE); 
-        }
-    }
-    private void accionCrearCarpeta() {
-        String nombre = JOptionPane.showInputDialog(this, "Nombre Carpeta:");
-        if (nombre != null && !nombre.trim().isEmpty()) {
-             fileManager.getRoot().addChild(new NodeDirectory(nombre, fileManager.getRoot()));
-             actualizarVistas();
-        }
-    }
-    private void accionEliminarArchivo() {
-        // 1. Obtener el nodo seleccionado en el árbol visual (JTree)
-        // Nota: Asegúrate de que tu JTree se llame 'treeDirectorios'
-        javax.swing.tree.DefaultMutableTreeNode nodoSeleccionado = (javax.swing.tree.DefaultMutableTreeNode) treeDirectorios.getLastSelectedPathComponent();
-        
-        if (nodoSeleccionado == null || nodoSeleccionado.isRoot()) {
-            JOptionPane.showMessageDialog(this, "Seleccione un archivo o carpeta (que no sea Root) para eliminar.");
-            return;
-        }
-        
-        String nombreNodo = (String) nodoSeleccionado.getUserObject();
-        
-        // 2. Buscar el nodo real en el backend
-        Node nodoReal = fileManager.getRoot().findChild(nombreNodo);
-        
-        if (nodoReal != null) {
-            // 3. Crear Proceso y Solicitud
-            proyecto2francobarrarogerbalan.Process proceso = fileManager.getProcessManager().createProcess("Borrar " + nombreNodo);
-            
-            IORequests request = new IORequests(proceso, TipoSolicitud.ELIMINAR, nodoReal.getPath(), 0, 0);
-            request.setArchivoPendiente(nodoReal); // Pasamos qué queremos borrar
-            
-            // 4. Enviar al Planificador
-            fileManager.getPlanificador().addRequest(request);
-            
-            JOptionPane.showMessageDialog(this, "Solicitud de eliminación enviada.");
-            actualizarVistas();
-        } else {
-             JOptionPane.showMessageDialog(this, "Error: No se encontró el objeto en el sistema de archivos.");
-        }
-    }
+    // --- generated code --             
+}
     // Variables declaration - do not modify//GEN-BEGIN:variables
     // End of variables declaration//GEN-END:variables
-}
+

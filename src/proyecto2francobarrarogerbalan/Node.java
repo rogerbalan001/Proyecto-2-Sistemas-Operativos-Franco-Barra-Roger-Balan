@@ -4,21 +4,27 @@
  */
 package proyecto2francobarrarogerbalan;
 
-import java.io.Serializable; // <--- AGREGAR IMPORT
+import java.io.Serializable; // Vital para Guardar/Cargar
 
-public abstract class Node implements Serializable { // <--- AGREGAR IMPLEMENTS
+/**
+ * Clase Base para Archivos y Directorios.
+ * Implementa Serializable para persistencia.
+ * @author frank
+ */
+public abstract class Node implements Serializable {
     
     private static final long serialVersionUID = 1L;
     
     protected String name;
-    protected NodeDirectory parent; // Referencia a su directorio padre (null si es el root)
-    // protected Date creationDate; // Podrías añadir esto
+    protected NodeDirectory parent; // Referencia al padre (null si es root)
 
     public Node(String name, NodeDirectory parent) {
         this.name = name;
         this.parent = parent;
     }
     
+    // --- Getters y Setters ---
+
     public String getName() {
         return name;
     }
@@ -35,7 +41,10 @@ public abstract class Node implements Serializable { // <--- AGREGAR IMPLEMENTS
         this.parent = parent;
     }
     
-    // Método para obtener el path completo (ej. /root/docs/file.txt)
+    /**
+     * Construye la ruta completa del archivo/carpeta.
+     * Ejemplo: /root/documentos/tarea.pdf
+     */
     public String getPath() {
         if (parent == null) { // Es el directorio raíz
             return "/"; 
@@ -47,6 +56,20 @@ public abstract class Node implements Serializable { // <--- AGREGAR IMPLEMENTS
         return parent.getPath() + "/" + name;
     }
     
-    // Método abstracto que las subclases deberán implementar
+    /**
+     * Método abstracto para obtener el tamaño.
+     * - Archivos: Su tamaño en bloques.
+     * - Directorios: Usualmente 0 o 1.
+     */
     public abstract int getSizeInBlocks();
+
+    /**
+     * --- ¡EL CAMBIO MÁGICO! ---
+     * Sobrescribimos toString para que el JTree sepa qué texto mostrar.
+     * Sin esto, el árbol mostraría códigos de memoria raros.
+     */
+    @Override
+    public String toString() {
+        return name; 
+    }
 }
